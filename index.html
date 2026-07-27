@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HeLp3r</title>
+<style>
+  html, body { margin: 0; padding: 0; min-height: 100vh; }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<script>
+const { useState, useMemo } = React;
+
+// ---------------------------------------------------------------------------
+// DATA — sourced from the HL3 Building page. Edit here as the game updates.
+// ---------------------------------------------------------------------------
+
+const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII"];
+const BUILDINGS = {
+  "Any Class": {
+    House: [["3 Wood"], ["4 Clay", "2 Straw Stacks", "4 Clay Bricks"], ["4 Stone Blocks", "2 Plank", "4 Clay Tile"], ["6 Concrete Block", "2 Plank", "4 Clay Tile", "2 Glass"], ["10 Ashlar Block", "5 Timber Frame", "4 Clay Tile", "2 Glass"], ["10 Ashlar Brick", "5 Timber Frame", "4 Clay Tile", "2 Glass"], ["10 Brick", "5 Industrial Plank", "8 Clay Tile", "5 Glass"]]
+  },
+  Defender: {
+    "Training Grounds": [["10 Wood"], ["2 Straw Stack", "6 Clay Brick"], ["10 Stone Block", "2 Plank", "6 Clay Tile"], ["10 Concrete Block", "2 Plank", "6 Clay Tile", "4 Glass"], ["12 Ashlar Block", "5 Timber Frame", "6 Clay Tile", "4 Glass"], ["12 Ashlar Brick", "5 Timber Frame", "6 Clay Tile", "4 Glass"], ["5 Steel Beam", "10 Brick", "20 Industrial Plank"]],
+    "Justice Court": [["5 Wood", "10 Rock"], ["3 Straw Stack", "10 Clay Brick"], ["10 Stone Block", "4 Clay Tile", "2 Plank"]],
+    "Tank Garage": [["15 Steel Beam", "5 Concrete Block", "10 Industrial Plank"]]
+  },
+  Farmer: {
+    Farm: [["3 Wood", "2 Rocks"], ["3 Clay Pots", "5 Clay Bricks"], ["3 Plank", "7 Stone Blocks", "3 Clay Tile"], ["3 Plank", "7 Concrete Block", "3 Clay Tile"], ["3 Timber Frame", "7 Ashlar Block", "3 Clay Tile"], ["3 Timber Frame", "7 Ashlar Brick", "3 Clay Tile"], ["5 Steel Beam", "15 Industrial Plank"]],
+    Windmill: [["5 Plank", "3 Straw Stack"]],
+    Stable: [["10 Wood", "4 Rock"], ["8 Clay Brick", "3 Straw Stack"], ["3 Plank", "12 Stone Block", "5 Clay Tiles"], ["3 Plank", "10 Concrete Block", "5 Clay Tile"], ["6 Timber Frame", "10 Ashlar Block", "5 Clay Tile"], ["6 Timber Frame", "10 Ashlar Brick", "5 Clay Tile"]],
+    Barn: [["10 Wood", "4 Rock"], ["3 Clay Pot", "5 Clay Brick", "3 Straw Stack"], ["3 Plank", "7 Stone Block", "5 Clay Tile"], ["3 Plank", "7 Concrete Block", "5 Clay Tile"], ["5 Timber Frame", "10 Ashlar Block", "5 Clay Tile"], ["5 Timber Frame", "10 Ashlar Brick", "5 Clay Tile"], ["20 Industrial Plank", "5 Steel Beam", "5 Glass"]]
+  },
+  Artisan: {
+    Artisan: [["5 Wood", "1 Rock", "2 Clay"], ["5 Copper Ingot", "3 Straw Stacks", "5 Clay Bricks"], ["10 Bronze Ingot", "7 Stone Block", "5 Clay Tile", "4 Plank"], ["15 Iron Ingot", "7 Concrete Block", "5 Clay Tile", "4 Glass"], ["15 Steel Ingot", "7 Ashlar Block", "5 Timber Frame", "4 Glass"], ["15 Steel Ingot", "7 Ashlar Block", "5 Timber Frame", "4 Glass"], ["15 Steel Beam", "20 Brick", "20 Glass"]],
+    "Tailor Shop": [["5 Wood", "3 Rock"], ["3 Copper Ingot", "3 Straw Stack", "5 Clay Brick"], ["3 Bronze Ingot", "7 Stone Block", "5 Clay Tile", "4 Plank"], ["3 Iron Ingot", "7 Concrete Block", "5 Clay Tile", "2 Glass"], ["5 Steel Ingot", "7 Ashlar Block", "5 Timber Frame", "2 Glass"], ["5 Steel Ingot", "7 Ashlar Brick", "5 Timber Frame", "2 Glass"], ["5 Steel Beam", "10 Brick", "5 Industrial Plank", "5 Glass"]]
+  },
+  Blacksmith: {
+    Forge: [["5 Wood", "3 Rock"], ["4 Wood", "4 Clay Bricks", "1 Clay Pot", "3 Straw Stacks"], ["10 Stone Block", "10 Clay Tile", "4 Plank"], ["15 Concrete Block", "15 Clay Tile", "6 Glass"], ["20 Ashlar Block", "15 Timber Frame", "6 Glass"], ["20 Ashlar Brick", "15 Timber Frame", "6 Glass"], ["35 Brick", "10 Plank", "10 Glass"]]
+  },
+  Engineer: {
+    Road: [["1 Rock"], ["1 Stone Block"], ["1 Concrete Block"]],
+    "Wooden Wall": [["3 Wood"], ["1 Clay Brick"], ["1 Stone Block"], ["3 Ashlar Block"]],
+    "Wide Road": [["3 Rock"], ["3 Stone Block"], ["3 Concrete Block"]],
+    "Elevated Terrain": [["12 Rock"]],
+    Stair: [["5 Rock"]],
+    "Wooden Stakes": [["2 Wood"]],
+    Torch: [["2 Wood"]],
+    "Wooden Gate": [["5 Wood"], ["5 Clay Brick"], ["5 Stone Block"], ["5 Ashlar Block"]],
+    Powerplant: [null, null, null, null, null, null, ["5 Steel Beam", "25 Brick", "5 Industrial Plank"]],
+    Garage: [null, null, null, null, null, null, ["5 Steel Beam", "20 Brick", "5 Industrial Plank"]],
+    Trebuchet: [["5 Steel Ingot", "20 Timber Frame"]],
+    Cannon: [["1 Cannon Piece"]],
+    "Great Wall of China": [["25 Stone Block"]]
+  },
+  Chef: {
+    Restaurant: [["5 Wood", "3 Rock"], ["3 Copper Ingots", "3 Straw Stacks", "5 Clay Bricks"], ["3 Bronze Ingots", "7 Stone Blocks", "5 Clay Tiles", "4 Planks"], ["3 Iron Ingots", "7 Concrete Blocks", "5 Clay Tiles", "4 Glass"], ["3 Steel Ingot", "7 Ashlar Block", "5 Timber Frame", "4 Glass"], ["3 Steel Ingot", "7 Ashlar Brick", "5 Timber Frame", "4 Glass"], ["3 Steel Beam", "12 Brick", "5 Industrial Plank", "4 Glass"]],
+    Garden: [["3 Wood", "2 Rock"], ["3 Clay Pot", "5 Clay Brick"]]
+  },
+  Scholar: {
+    School: [["10 Wood", "4 Rock"], ["3 Copper Ingot", "5 Straw Stack", "8 Clay Brick"], ["3 Bronze Ingots", "7 Stone Blocks", "5 Clay Tiles", "4 Planks"], ["3 Iron Ingot", "10 Concrete Block", "5 Clay Tile", "2 Glass"], ["5 Steel Ingot", "15 Ashlar Brick", "10 Timber Frame", "5 Glass"], ["10 Steel Beam", "30 Brick", "20 Industrial Plank", "10 Glass"]],
+    Library: [["5 Copper Ingot", "5 Straw Stack", "15 Clay Brick"], ["5 Copper Ingot", "20 Stone Block", "10 Plank"], ["5 Steel Ingot", "10 Ashlar Brick", "10 Timber Frame", "7 Glass"], ["10 Steel Ingot", "20 Ashlar Brick", "10 Timber Frame", "10 Glass"], ["20 Steel Beam", "20 Brick", "10 Industrial Plank", "10 Glass"]]
+  },
+  Doctor: {
+    Hospital: [["5 Wood", "3 Rock"], ["3 Straw Stack", "5 Clay Brick"], ["3 Bronze Ingots", "7 Stone Block", "5 Clay Tiles", "4 Planks"], ["3 Iron Ingots", "7 Concrete Blocks", "5 Clay Tiles", "4 Glass"], ["5 Steel Ingot", "10 Ashlar Block", "5 Timber Frame", "4 Glass"], ["5 Steel Ingot", "10 Ashlar Brick", "5 Timber Frame", "4 Glass"], ["5 Steel Beam", "20 Brick", "7 Industrial Plank", "6 Glass"]]
+  },
+  Extractor: {
+    "Petroleum Extractor": [["5 Steel Beam", "5 Brick", "20 Industrial Plank"]]
+  },
+  Priest: {
+    Temple: [["4 Wood", "20 Rock"], ["10 Straw Stack", "2 Plank"], ["10 Stone Block", "5 Clay Tile", "2 Bronze Ingot"], ["12 Concrete Blocks", "5 Clay Tiles", "4 Iron Ingots"], ["16 Ashlar Block", "10 Timber Frame", "6 Steel Ingot"]],
+    Cemetery: [["10 Rock"]],
+    Pyramid: [["100 Stone Block"]],
+    "Notre-Dame": [["60 Ashlar Block", "20 Timber Frame", "20 Stained Glass"]]
+  },
+  Merchant: {
+    Dock: [["10 Wood"], ["10 Plank"], ["10 Stone Block"], ["20 Concrete Block", "10 Plank"], ["20 Ashlar Block", "10 Timber Frame"], ["20 Ashlar Brick", "10 Timber Frame"], ["20 Ashlar Brick", "5 Steel Beam"]],
+    "Trading Post": [["10 Wood"], ["3 Copper Ingot", "3 Straw Stack", "5 Clay Brick"], ["2 Bronze Ingot", "3 Stone Block", "3 Clay Tile", "2 Plank"], ["1 Iron Ingot", "3 Concrete Block", "3 Clay Tile", "2 Glass"]],
+    "Lighthouse of Alexandria": [["20 Bronze Ingot", "60 Stone Block", "10 Clay Tile"]],
+    Airstrip: [["15 Steel Beam", "5 Concrete Block", "10 Industrial Plank"]]
+  },
+  Noble: {
+    Mott: [["20 Wood", "20 Rock"], ["5 Straw Stack", "6 Clay Brick"], ["12 Stone Block", "4 Plank", "4 Clay Tile"], ["12 Concrete Block", "4 Plank", "6 Clay Tile", "10 Glass"], ["20 Ashlar Block", "10 Timber Frame", "6 Steel Ingot", "10 Stained Glass"]],
+    Arena: [["10 Wood", "10 Rock"], ["10 Plank", "5 Copper Ingot"], ["10 Plank", "5 Bronze Ingot", "10 Stone Block"], ["10 Plank", "5 Iron Ingot", "15 Concrete Block"]],
+    "Bronze Statue": [["10 Bronze Ingot", "5 Stone Block"]],
+    "Military Camp": [["20 Stone Block", "10 Cotton", "10 Plank"]],
+    "Templo Mayor": [["150 Stone Block"]],
+    Colosseum: [["20 Plank", "10 Iron Ingot", "60 Concrete Block"]]
+  },
+  Jester: {
+    Theatre: [["10 Rock", "10 Wood"], ["10 Plank", "5 Bronze Ingot", "10 Stone Block"], ["10 Plank", "5 Iron Ingot", "15 Concrete Block"], ["10 Ashlar Brick", "10 Timber Frame", "5 Clay Tile", "5 Glass"]]
+  }
+};
+
+// School passive XP presets (per second, while a teacher is teaching)
+const SCHOOL_RATES = [{
+  tier: "I",
+  child: 5,
+  adult: 2
+}, {
+  tier: "II",
+  child: 10,
+  adult: 4
+}, {
+  tier: "III",
+  child: 15,
+  adult: 6
+}, {
+  tier: "IV",
+  child: 20,
+  adult: 8
+}, {
+  tier: "V",
+  child: 30,
+  adult: 12
+}, {
+  tier: "VI",
+  child: 35,
+  adult: 14
+}];
+
+// Known per-action XP presets. Add more as they're confirmed in-game.
+const ACTION_PRESETS = [{
+  label: "Farmer — Crop Harvest",
+  xp: 35
+}, {
+  label: "Farmer — Harvest Carrots",
+  xp: 20
+}, {
+  label: "Mining — Tree",
+  xp: 15
+}, {
+  label: "Mining — Rock",
+  xp: 10
+}];
+
+// XP required to advance from a given level to the next.
+// Level 0 is a special reduced threshold (dev-confirmed new-player discount).
+// Levels 1-49 fit a linear regression against confirmed in-game cumulative
+// timestamps at levels 5, 15, 24, 49, and 50 (all within ~1-6 XP):
+//   XP = 10.09 * level + 103.07
+// Level 50 is the class mastery cap (triggers a dynasty-level bonus).
+// A small buffer is added and results are always rounded UP, so the
+// estimator errs toward overestimating rather than leaving someone short.
+function xpToNextLevel(level) {
+  if (level === 0) return 72;
+  return Math.ceil((10.09 * level + 103.07) * 1.02);
+}
+
+// Vehicles craftable at certain buildings, separate from the building's own
+// construction cost. Sourced from the Building page's Purpose column and
+// the Industrial Vehicles / Boats reference sheets.
+const VEHICLES = {
+  "Model T Car (Garage — Engineer)": ["5 Part", "2 Steel Beam", "4 Tire"],
+  "Model T Bus (Bus Garage — Merchant)": ["5 Part", "5 Steel Beam", "4 Tire"],
+  "Light Tank (Tank Garage — Defender)": ["10 Part", "10 Steel Beam", "10 Tire"],
+  "Blimp (Airstrip — Merchant)": ["5 Part", "2 Steel Beam", "5 Sail"],
+  "Log Boat (Tier I Dock)": ["10 Wood"],
+  "Plank Boat (Tier II Dock)": ["10 Plank"],
+  "Plank Sailing Boat (Tier III Dock)": ["3 Wood Hull", "1 Sail", "4 Paddle"],
+  "Warboat (Tier IV Dock)": ["10 Wood Hull", "2 Sail", "8 Paddle"],
+  "Brigantine (Tier V Dock)": ["15 Wood Hull", "3 Sail", "3 Steel Ingot"],
+  "Corvette (Tier VI Dock)": ["15 Wood Hull", "3 Sail", "4 Cannon Piece"],
+  "Steam Ship (Tier VII Dock)": ["15 Steel Beam", "10 Sail", "4 Cannon Piece"]
+};
+
+// Crafting recipes: how much raw/intermediate material is consumed to
+// produce ONE unit of each craftable item. Used to recursively expand any
+// building's material list down to base raw resources.
+const RECIPES = {
+  "Clay Brick": {
+    Clay: 2
+  },
+  "Straw Stack": {
+    Wheat: 2
+  },
+  "Clay Pot": {
+    Clay: 2
+  },
+  "Clay Tile": {
+    Clay: 1
+  },
+  Plank: {
+    Wood: 2
+  },
+  "Stone Block": {
+    Rock: 2
+  },
+  "Concrete Block": {
+    Rock: 2
+  },
+  Glass: {
+    Sand: 2
+  },
+  "Timber Frame": {
+    Wood: 3
+  },
+  "Ashlar Block": {
+    Rock: 3
+  },
+  "Stained Glass": {
+    Sand: 3
+  },
+  "Ashlar Brick": {
+    Rock: 3
+  },
+  Brick: {
+    Clay: 3
+  },
+  Nail: {
+    "Steel Beam": 0.5
+  },
+  // 1 Steel Beam yields 2 Nails
+  "Industrial Plank": {
+    Nail: 1,
+    Plank: 1
+  },
+  Part: {
+    "Steel Beam": 1
+  },
+  Tire: {
+    Rubber: 3
+  },
+  Fuel: {
+    Oil: 1
+  },
+  "Copper Ingot": {
+    Copper: 2
+  },
+  "Bronze Ingot": {
+    Copper: 2,
+    Tin: 1
+  },
+  "Iron Ingot": {
+    Iron: 2
+  },
+  "Steel Ingot": {
+    Iron: 2,
+    Coal: 1
+  },
+  "Steel Beam": {
+    Iron: 2,
+    Coal: 1
+  },
+  Sail: {
+    Cotton: 10
+  },
+  Paddle: {
+    Wood: 2
+  },
+  "Wood Hull": {
+    Wood: 5
+  },
+  "Cannon Piece": {
+    "Steel Ingot": 5
+  }
+};
+function expandToRaw(name, qty, acc) {
+  // Material names aren't always consistently singular/plural across the
+  // source data (e.g. "Straw Stacks" vs "Straw Stack", "Rocks" vs "Rock").
+  // Fall back to the singular form if the exact name has no recipe, and
+  // always store base/raw resources under their singular key so plural
+  // variants merge with singular ones instead of appearing as separate rows.
+  let recipe = RECIPES[name];
+  if (!recipe && name.endsWith("s")) {
+    recipe = RECIPES[name.slice(0, -1)];
+  }
+  if (!recipe) {
+    const key = name.endsWith("s") ? name.slice(0, -1) : name;
+    acc[key] = (acc[key] || 0) + qty;
+    return;
+  }
+  Object.entries(recipe).forEach(([input, amount]) => {
+    expandToRaw(input, amount * qty, acc);
+  });
+}
+function expandListToRaw(materialStrings) {
+  const acc = {};
+  materialStrings.forEach(entry => {
+    const match = entry.match(/^([\d.]+)\s+(.+)$/);
+    if (!match) return;
+    expandToRaw(match[2], parseFloat(match[1]), acc);
+  });
+  return acc;
+}
+
+// ---------------------------------------------------------------------------
+// STYLE TOKENS
+// ---------------------------------------------------------------------------
+
+const COLORS = {
+  bg: "#E7F0E4",
+  panel: "#F4F3E7",
+  panelAlt: "#E7E7D3",
+  border: "#8FA06B",
+  gold: "#E2833F",
+  goldDim: "#C56A2C",
+  teal: "#4E93B8",
+  parchment: "#20301F",
+  muted: "#333F26",
+  faint: "#5C6848"
+};
+function TierBadge({
+  label,
+  size = 34
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: size,
+      height: size,
+      borderRadius: "50%",
+      border: `2px solid ${COLORS.gold}`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontWeight: 700,
+      fontSize: size * 0.42,
+      color: COLORS.gold,
+      letterSpacing: "0.5px",
+      flexShrink: 0,
+      background: COLORS.panelAlt
+    }
+  }, label);
+}
+function SectionLabel({
+  children
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontSize: 13,
+      fontWeight: 700,
+      letterSpacing: "2px",
+      textTransform: "uppercase",
+      color: COLORS.parchment,
+      marginBottom: 10,
+      paddingBottom: 6,
+      borderBottom: `1px solid ${COLORS.border}`
+    }
+  }, children);
+}
+function App() {
+  const [tab, setTab] = useState("build");
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      minHeight: "100vh",
+      background: "linear-gradient(180deg, #DCEEF6 0%, #E2EFD9 55%, #DCE8C8 100%)",
+      color: COLORS.parchment,
+      fontFamily: "'Segoe UI', Inter, system-ui, sans-serif",
+      padding: "28px 20px 60px"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      maxWidth: 760,
+      margin: "0 auto"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 28,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontWeight: 900,
+      letterSpacing: "0.5px",
+      color: COLORS.gold,
+      textShadow: "-2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff, 2px 2px 0 #fff, 0 4px 0 rgba(0,0,0,0.08)"
+    }
+  }, [{
+    ch: "H",
+    big: true
+  }, {
+    ch: "e",
+    big: false
+  }, {
+    ch: "L",
+    big: true
+  }, {
+    ch: "p",
+    big: false
+  }, {
+    ch: "3",
+    big: true
+  }, {
+    ch: "r",
+    big: false
+  }].map((c, i) => /*#__PURE__*/React.createElement("span", {
+    key: i,
+    style: {
+      fontSize: c.big ? 44 : 30,
+      color: c.big ? COLORS.gold : COLORS.goldDim
+    }
+  }, c.ch))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: COLORS.muted,
+      fontSize: 13.5,
+      marginTop: 8,
+      fontWeight: 600
+    }
+  }, "Your friendly civilization sidekick 🏛️")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 2,
+      marginBottom: 24,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 8,
+      overflow: "hidden"
+    }
+  }, [{
+    id: "build",
+    label: "Build Ledger"
+  }, {
+    id: "vehicles",
+    label: "Vehicles"
+  }, {
+    id: "level",
+    label: "Leveling Estimator"
+  }].map(t => /*#__PURE__*/React.createElement("button", {
+    key: t.id,
+    onClick: () => setTab(t.id),
+    style: {
+      flex: 1,
+      padding: "13px 10px",
+      background: tab === t.id ? COLORS.gold : COLORS.panel,
+      color: tab === t.id ? "#FFFFFF" : COLORS.muted,
+      border: "none",
+      fontSize: 14,
+      fontWeight: 600,
+      cursor: "pointer",
+      letterSpacing: "0.3px"
+    }
+  }, t.label))), tab === "build" && /*#__PURE__*/React.createElement(BuildLedger, null), tab === "vehicles" && /*#__PURE__*/React.createElement(VehicleCalculator, null), tab === "level" && /*#__PURE__*/React.createElement(LevelingEstimator, null)));
+}
+
+// ---------------------------------------------------------------------------
+// BUILD LEDGER TAB
+// ---------------------------------------------------------------------------
+
+function BuildLedger() {
+  const classes = Object.keys(BUILDINGS);
+  const [cls, setCls] = useState(classes[0]);
+  const buildings = Object.keys(BUILDINGS[cls]);
+  const [building, setBuilding] = useState(buildings[0]);
+  const tiers = BUILDINGS[cls][building] || [];
+  const availableTierIdx = tiers.map((t, i) => t ? i : null).filter(i => i !== null);
+  const [tierIdx, setTierIdx] = useState(availableTierIdx[0] ?? 0);
+  const [cumulative, setCumulative] = useState(false);
+
+  // Reset dependent selections when class/building changes
+  const handleClassChange = newCls => {
+    setCls(newCls);
+    const firstBuilding = Object.keys(BUILDINGS[newCls])[0];
+    setBuilding(firstBuilding);
+    const firstTiers = BUILDINGS[newCls][firstBuilding];
+    const firstIdx = firstTiers.map((t, i) => t ? i : null).filter(i => i !== null)[0];
+    setTierIdx(firstIdx ?? 0);
+  };
+  const handleBuildingChange = newBuilding => {
+    setBuilding(newBuilding);
+    const newTiers = BUILDINGS[cls][newBuilding];
+    const firstIdx = newTiers.map((t, i) => t ? i : null).filter(i => i !== null)[0];
+    setTierIdx(firstIdx ?? 0);
+  };
+  const combinedMaterials = useMemo(() => {
+    if (!cumulative) return tiers[tierIdx] || [];
+    const totals = {};
+    const displayNames = {};
+    for (let i = 0; i <= tierIdx; i++) {
+      const list = tiers[i];
+      if (!list) continue;
+      list.forEach(entry => {
+        const match = entry.match(/^([\d.]+)\s+(.+)$/);
+        if (!match) return;
+        const qty = parseFloat(match[1]);
+        const rawName = match[2];
+        const key = rawName.endsWith("s") ? rawName.slice(0, -1) : rawName;
+        totals[key] = (totals[key] || 0) + qty;
+        if (!displayNames[key]) displayNames[key] = rawName;
+      });
+    }
+    return Object.entries(totals).map(([key, qty]) => `${qty} ${displayNames[key]}`);
+  }, [cumulative, tierIdx, tiers]);
+  const [showRaw, setShowRaw] = useState(false);
+  const rawTotals = useMemo(() => expandListToRaw(combinedMaterials), [combinedMaterials]);
+  const [quantity, setQuantity] = useState("1");
+  const qtyMultiplier = Math.max(1, parseInt(quantity, 10) || 1);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: COLORS.panel,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 10,
+      padding: 20,
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement(SectionLabel, null, "Select Role"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 20
+    }
+  }, classes.map(c => /*#__PURE__*/React.createElement("button", {
+    key: c,
+    onClick: () => handleClassChange(c),
+    style: {
+      padding: "7px 13px",
+      borderRadius: 6,
+      border: `1px solid ${cls === c ? COLORS.gold : COLORS.border}`,
+      background: cls === c ? "rgba(226,131,63,0.15)" : "transparent",
+      color: cls === c ? COLORS.gold : COLORS.muted,
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, c))), /*#__PURE__*/React.createElement(SectionLabel, null, "Select Building"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 20
+    }
+  }, buildings.map(b => /*#__PURE__*/React.createElement("button", {
+    key: b,
+    onClick: () => handleBuildingChange(b),
+    style: {
+      padding: "7px 13px",
+      borderRadius: 6,
+      border: `1px solid ${building === b ? COLORS.teal : COLORS.border}`,
+      background: building === b ? "rgba(78,147,184,0.15)" : "transparent",
+      color: building === b ? COLORS.teal : COLORS.muted,
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, b))), /*#__PURE__*/React.createElement(SectionLabel, null, "Select Tier"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8
+    }
+  }, tiers.map((t, i) => t ? /*#__PURE__*/React.createElement("button", {
+    key: i,
+    onClick: () => setTierIdx(i),
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: "50%",
+      border: `2px solid ${tierIdx === i ? COLORS.gold : COLORS.border}`,
+      background: tierIdx === i ? COLORS.gold : "transparent",
+      color: tierIdx === i ? "#FFFFFF" : COLORS.muted,
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontWeight: 700,
+      fontSize: 14,
+      cursor: "pointer"
+    }
+  }, ROMAN[i]) : null))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: COLORS.panel,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 10,
+      padding: 22
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 14,
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement(TierBadge, {
+    label: ROMAN[tierIdx],
+    size: 44
+  }), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontSize: 19,
+      fontWeight: 700
+    }
+  }, building), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: COLORS.muted,
+      fontSize: 12.5
+    }
+  }, cls, " · Tier ", ROMAN[tierIdx], qtyMultiplier > 1 ? ` · ×${qtyMultiplier}` : ""))), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 16,
+      fontSize: 13,
+      color: COLORS.muted,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: cumulative,
+    onChange: e => setCumulative(e.target.checked)
+  }), "Show total materials, Tier I through ", ROMAN[tierIdx]), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 16,
+      fontSize: 13,
+      color: COLORS.muted,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: showRaw,
+    onChange: e => setShowRaw(e.target.checked)
+  }), "Break down into raw resources (ore, wood, etc.)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 18,
+      maxWidth: 160
+    }
+  }, /*#__PURE__*/React.createElement(NumField, {
+    label: "How many?",
+    value: quantity,
+    onChange: setQuantity,
+    placeholder: "1"
+  })), combinedMaterials.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: COLORS.faint,
+      fontSize: 13,
+      fontStyle: "italic"
+    }
+  }, "No material data recorded for this tier.") : showRaw ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 0
+    }
+  }, Object.entries(rawTotals).map(([name, qty], i, arr) => /*#__PURE__*/React.createElement("div", {
+    key: name,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      padding: "10px 4px",
+      borderBottom: i < arr.length - 1 ? `1px solid ${COLORS.border}` : "none",
+      fontSize: 14.5
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: COLORS.parchment
+    }
+  }, name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: COLORS.teal,
+      fontWeight: 700
+    }
+  }, Math.ceil(qty * qtyMultiplier * 100) / 100)))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 0
+    }
+  }, combinedMaterials.map((m, i) => {
+    const match = m.match(/^([\d.]+)\s+(.+)$/);
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "10px 4px",
+        borderBottom: i < combinedMaterials.length - 1 ? `1px solid ${COLORS.border}` : "none",
+        fontSize: 14.5
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: COLORS.parchment
+      }
+    }, match ? match[2] : m), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: COLORS.gold,
+        fontWeight: 700
+      }
+    }, match ? parseFloat(match[1]) * qtyMultiplier : ""));
+  }))));
+}
+
+// ---------------------------------------------------------------------------
+// VEHICLES TAB
+// ---------------------------------------------------------------------------
+
+function VehicleCalculator() {
+  const names = Object.keys(VEHICLES);
+  const [selected, setSelected] = useState(names[0]);
+  const [showRaw, setShowRaw] = useState(false);
+  const [quantity, setQuantity] = useState("1");
+  const qtyMultiplier = Math.max(1, parseInt(quantity, 10) || 1);
+  const materials = VEHICLES[selected];
+  const rawTotals = useMemo(() => expandListToRaw(materials), [materials]);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: COLORS.panel,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 10,
+      padding: 20,
+      marginBottom: 18
+    }
+  }, /*#__PURE__*/React.createElement(SectionLabel, null, "Select Vehicle"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8
+    }
+  }, names.map(name => /*#__PURE__*/React.createElement("button", {
+    key: name,
+    onClick: () => setSelected(name),
+    style: {
+      padding: "7px 13px",
+      borderRadius: 6,
+      border: `1px solid ${selected === name ? COLORS.gold : COLORS.border}`,
+      background: selected === name ? "rgba(226,131,63,0.15)" : "transparent",
+      color: selected === name ? COLORS.gold : COLORS.muted,
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, name)))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: COLORS.panel,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 10,
+      padding: 22
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontSize: 19,
+      fontWeight: 700,
+      marginBottom: 16
+    }
+  }, selected), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+      marginBottom: 16,
+      fontSize: 13,
+      color: COLORS.muted,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: showRaw,
+    onChange: e => setShowRaw(e.target.checked)
+  }), "Break down into raw resources (ore, wood, etc.)"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 18,
+      maxWidth: 160
+    }
+  }, /*#__PURE__*/React.createElement(NumField, {
+    label: "How many?",
+    value: quantity,
+    onChange: setQuantity,
+    placeholder: "1"
+  })), showRaw ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 0
+    }
+  }, Object.entries(rawTotals).map(([name, qty], i, arr) => /*#__PURE__*/React.createElement("div", {
+    key: name,
+    style: {
+      display: "flex",
+      justifyContent: "space-between",
+      padding: "10px 4px",
+      borderBottom: i < arr.length - 1 ? `1px solid ${COLORS.border}` : "none",
+      fontSize: 14.5
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: COLORS.parchment
+    }
+  }, name), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: COLORS.teal,
+      fontWeight: 700
+    }
+  }, Math.ceil(qty * qtyMultiplier * 100) / 100)))) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 0
+    }
+  }, materials.map((m, i) => {
+    const match = m.match(/^([\d.]+)\s+(.+)$/);
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "10px 4px",
+        borderBottom: i < materials.length - 1 ? `1px solid ${COLORS.border}` : "none",
+        fontSize: 14.5
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: COLORS.parchment
+      }
+    }, match ? match[2] : m), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: COLORS.gold,
+        fontWeight: 700
+      }
+    }, match ? parseFloat(match[1]) * qtyMultiplier : ""));
+  })), materials.some(m => m.includes("Sail")) && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      padding: "10px 14px",
+      borderRadius: 6,
+      background: "rgba(226,131,63,0.1)",
+      border: `1px solid ${COLORS.goldDim}`,
+      fontSize: 12,
+      color: COLORS.muted,
+      lineHeight: 1.4
+    }
+  }, "Sails can only be crafted at a Tier III Dock or higher.")));
+}
+
+// ---------------------------------------------------------------------------
+// LEVELING ESTIMATOR TAB
+// ---------------------------------------------------------------------------
+
+function LevelingEstimator() {
+  const [mode, setMode] = useState("action");
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: COLORS.panelAlt,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 8,
+      padding: "12px 16px",
+      marginBottom: 18,
+      fontSize: 12.5,
+      color: COLORS.muted,
+      lineHeight: 1.5
+    }
+  }, "This estimator runs on whatever XP data has been confirmed so far. Presets will expand as more class-specific XP values are gathered from the game."), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 20
+    }
+  }, [{
+    id: "action",
+    label: "Per-Action Tasks"
+  }, {
+    id: "passive",
+    label: "Passive Rate (School)"
+  }].map(m => /*#__PURE__*/React.createElement("button", {
+    key: m.id,
+    onClick: () => setMode(m.id),
+    style: {
+      flex: 1,
+      padding: "10px 8px",
+      borderRadius: 6,
+      border: `1px solid ${mode === m.id ? COLORS.teal : COLORS.border}`,
+      background: mode === m.id ? "rgba(78,147,184,0.15)" : "transparent",
+      color: mode === m.id ? COLORS.parchment : COLORS.muted,
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontWeight: mode === m.id ? 700 : 500,
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, m.label))), mode === "action" ? /*#__PURE__*/React.createElement(ActionCalculator, null) : /*#__PURE__*/React.createElement(PassiveCalculator, null));
+}
+function NumField({
+  label,
+  value,
+  onChange,
+  placeholder
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12.5,
+      color: COLORS.muted,
+      marginBottom: 6
+    }
+  }, label), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    value: value,
+    placeholder: placeholder,
+    onChange: e => onChange(e.target.value),
+    style: {
+      width: "100%",
+      padding: "10px 12px",
+      borderRadius: 6,
+      border: `1px solid ${COLORS.border}`,
+      background: COLORS.panelAlt,
+      color: COLORS.parchment,
+      fontSize: 15,
+      boxSizing: "border-box"
+    }
+  }));
+}
+function ActionCalculator() {
+  const [currentLevel, setCurrentLevel] = useState("0");
+  const [goalLevel, setGoalLevel] = useState("1");
+  const cur = parseInt(currentLevel, 10) || 0;
+  const goal = parseInt(goalLevel, 10) || 0;
+  let targetXp = 0;
+  for (let lvl = cur; lvl < goal; lvl++) {
+    targetXp += xpToNextLevel(lvl);
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: COLORS.panel,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 10,
+      padding: 22
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 14,
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement(NumField, {
+    label: "Current level",
+    value: currentLevel,
+    onChange: setCurrentLevel,
+    placeholder: "0"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement(NumField, {
+    label: "Goal level",
+    value: goalLevel,
+    onChange: setGoalLevel,
+    placeholder: "1"
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      marginBottom: 18,
+      padding: "18px 20px",
+      borderRadius: 8,
+      background: "rgba(226,131,63,0.1)",
+      border: `1px solid ${COLORS.goldDim}`,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontSize: 26,
+      fontWeight: 700,
+      color: COLORS.gold,
+      marginBottom: 4
+    }
+  }, "Level ", cur, " → Level ", goal), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: COLORS.muted
+    }
+  }, "∼", targetXp.toLocaleString(), " XP")), /*#__PURE__*/React.createElement(SectionLabel, null, "Ways to earn it"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexDirection: "column",
+      gap: 0
+    }
+  }, ACTION_PRESETS.map((p, i) => {
+    const count = p.xp > 0 ? Math.ceil(targetXp / p.xp) : 0;
+    return /*#__PURE__*/React.createElement("div", {
+      key: p.label,
+      style: {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "12px 4px",
+        borderBottom: i < ACTION_PRESETS.length - 1 ? `1px solid ${COLORS.border}` : "none"
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14.5,
+        color: COLORS.parchment
+      }
+    }, p.label), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11.5,
+        color: COLORS.faint
+      }
+    }, p.xp, " XP each")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+        fontSize: 20,
+        fontWeight: 700,
+        color: COLORS.gold,
+        whiteSpace: "nowrap"
+      }
+    }, count.toLocaleString(), "×"));
+  })), goal >= 50 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      padding: "10px 14px",
+      borderRadius: 6,
+      background: "rgba(226,131,63,0.1)",
+      border: `1px solid ${COLORS.goldDim}`,
+      fontSize: 12,
+      color: COLORS.muted,
+      lineHeight: 1.4
+    }
+  }, "Level 50 is the class mastery cap and may not follow the same XP curve as earlier levels. Treat this estimate near Level 50 as unconfirmed."));
+}
+function PassiveCalculator() {
+  const [tierIdx, setTierIdx] = useState(0);
+  const [isChild, setIsChild] = useState(true);
+  const [currentLevel, setCurrentLevel] = useState("0");
+  const [goalLevel, setGoalLevel] = useState("1");
+  const cur = parseInt(currentLevel, 10) || 0;
+  const goal = parseInt(goalLevel, 10) || 0;
+  let targetXp = 0;
+  for (let lvl = cur; lvl < goal; lvl++) {
+    targetXp += xpToNextLevel(lvl);
+  }
+  const rate = SCHOOL_RATES[tierIdx];
+  const xpPerSecond = isChild ? rate.child : rate.adult;
+  const seconds = xpPerSecond > 0 ? Math.ceil(targetXp / xpPerSecond) : 0;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor(seconds % 3600 / 60);
+  const remSeconds = seconds % 60;
+  return /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: COLORS.panel,
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 10,
+      padding: 22
+    }
+  }, /*#__PURE__*/React.createElement(SectionLabel, null, "School Tier"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 20
+    }
+  }, SCHOOL_RATES.map((r, i) => /*#__PURE__*/React.createElement("button", {
+    key: r.tier,
+    onClick: () => setTierIdx(i),
+    style: {
+      width: 40,
+      height: 40,
+      borderRadius: "50%",
+      border: `2px solid ${tierIdx === i ? COLORS.gold : COLORS.border}`,
+      background: tierIdx === i ? COLORS.gold : "transparent",
+      color: tierIdx === i ? "#FFFFFF" : COLORS.muted,
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontWeight: 700,
+      fontSize: 14,
+      cursor: "pointer"
+    }
+  }, r.tier))), /*#__PURE__*/React.createElement(SectionLabel, null, "Age"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 8,
+      marginBottom: 24
+    }
+  }, [{
+    id: true,
+    label: "Under 14"
+  }, {
+    id: false,
+    label: "14 or older"
+  }].map(o => /*#__PURE__*/React.createElement("button", {
+    key: String(o.id),
+    onClick: () => setIsChild(o.id),
+    style: {
+      flex: 1,
+      padding: "9px 8px",
+      borderRadius: 6,
+      border: `1px solid ${isChild === o.id ? COLORS.teal : COLORS.border}`,
+      background: isChild === o.id ? "rgba(78,147,184,0.15)" : "transparent",
+      color: isChild === o.id ? COLORS.teal : COLORS.muted,
+      fontSize: 13,
+      cursor: "pointer"
+    }
+  }, o.label))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: "flex",
+      gap: 14,
+      marginBottom: 6
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement(NumField, {
+    label: "Current level",
+    value: currentLevel,
+    onChange: setCurrentLevel,
+    placeholder: "0"
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement(NumField, {
+    label: "Goal level",
+    value: goalLevel,
+    onChange: setGoalLevel,
+    placeholder: "1"
+  }))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 10,
+      padding: "18px 20px",
+      borderRadius: 8,
+      background: "rgba(78,147,184,0.1)",
+      border: `1px solid ${COLORS.teal}`,
+      textAlign: "center"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: COLORS.muted,
+      marginBottom: 4
+    }
+  }, "Level ", cur, " → Level ", goal, " · ", targetXp.toLocaleString(), " XP"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: "'Arial Rounded MT Bold', 'Baloo 2', 'Segoe UI', sans-serif",
+      fontSize: 26,
+      fontWeight: 700,
+      color: COLORS.teal
+    }
+  }, hours > 0 ? `${hours}h ` : "", minutes, "m ", remSeconds, "s"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: COLORS.faint,
+      marginTop: 4
+    }
+  }, "of teaching time required")), goal >= 50 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 12,
+      padding: "10px 14px",
+      borderRadius: 6,
+      background: "rgba(226,131,63,0.1)",
+      border: `1px solid ${COLORS.goldDim}`,
+      fontSize: 12,
+      color: COLORS.muted,
+      lineHeight: 1.4
+    }
+  }, "Level 50 is the class mastery cap and may not follow the same XP curve as earlier levels. Treat this estimate near Level 50 as unconfirmed."));
+}
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
